@@ -227,6 +227,135 @@ async def generate_image(prompt: str) -> Dict[str, Any]:
             "error": str(e)
         }
 
+async def clone_website(url: str) -> Dict[str, Any]:
+    """
+    Clone a website by fetching and analyzing its structure
+    """
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        }
+        
+        response = requests.get(url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Extract key information
+            title = soup.find('title').get_text() if soup.find('title') else "No title"
+            
+            # Extract CSS (inline styles and stylesheets)
+            styles = []
+            for style in soup.find_all('style'):
+                styles.append(style.get_text())
+            
+            # Extract external CSS links
+            css_links = []
+            for link in soup.find_all('link', rel='stylesheet'):
+                css_links.append(link.get('href', ''))
+            
+            # Extract structure
+            headings = [h.get_text().strip() for h in soup.find_all(['h1', 'h2', 'h3'])]
+            paragraphs = [p.get_text().strip()[:200] for p in soup.find_all('p')[:5]]
+            
+            # Extract JavaScript
+            scripts = []
+            for script in soup.find_all('script'):
+                if script.get('src'):
+                    scripts.append(script.get('src'))
+            
+            # Clean HTML (remove scripts for security)
+            for tag in soup(['script', 'iframe', 'embed']):
+                tag.decompose()
+            
+            html_structure = str(soup)[:5000]  # First 5000 chars
+            
+            return {
+                "success": True,
+                "url": url,
+                "title": title,
+                "headings": headings[:10],
+                "paragraphs": paragraphs,
+                "css_links": css_links[:5],
+                "inline_styles": styles[0][:1000] if styles else "",
+                "scripts": scripts[:5],
+                "html_structure": html_structure,
+                "analysis": f"Website '{title}' has {len(headings)} headings and {len(paragraphs)} paragraphs"
+            }
+        else:
+            return {
+                "success": False,
+                "error": f"Failed to fetch website: HTTP {response.status_code}"
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+async def create_website(description: str, style: str = "modern", include_js: bool = True) -> Dict[str, Any]:
+    """
+    Generate a complete website from description
+    """
+    try:
+        # Use AI to generate website code
+        api_key = os.environ.get('EMERGENT_LLM_KEY')
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=str(uuid.uuid4()),
+            system_message="You are an expert web developer. Create complete, production-ready HTML/CSS/JS code."
+        )
+        chat.with_model("openai", "gpt-4o-mini")
+        
+        prompt = f"""Create a complete, fully functional website with the following requirements:
+
+Description: {description}
+Style: {style}
+Include JavaScript: {include_js}
+
+Requirements:
+1. Complete HTML structure with proper DOCTYPE and meta tags
+2. Modern CSS with {style} design aesthetic
+3. Responsive design (mobile-friendly)
+4. {"Interactive JavaScript features" if include_js else "Pure HTML/CSS only"}
+5. Use modern web standards
+6. Include proper semantic HTML
+7. Add beautiful colors and styling
+8. Make it production-ready
+
+Return ONLY the complete HTML code (with embedded CSS and JS). No explanations."""
+
+        user_msg = UserMessage(text=prompt)
+        html_code = await chat.send_message(user_msg)
+        
+        # Clean and validate HTML
+        if '<!DOCTYPE' not in html_code and '<html' not in html_code:
+            # Wrap in proper HTML structure if missing
+            html_code = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generated Website</title>
+</head>
+<body>
+{html_code}
+</body>
+</html>"""
+        
+        return {
+            "success": True,
+            "html": html_code,
+            "description": description,
+            "style": style,
+            "preview_url": "/preview"  # Will be handled by frontend
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
 async def analyze_document(file_content: bytes, filename: str) -> Dict[str, Any]:
     """
     Analyze uploaded document (PDF or text)
