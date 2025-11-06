@@ -709,6 +709,166 @@ async def analyze_stock(symbol: str, analysis_type: str = "full") -> Dict[str, A
             "error": str(e)
         }
 
+async def check_auto_trading_limits(config: Dict, portfolio: Dict, trade_amount: float) -> Dict[str, Any]:
+    """
+    Check if auto-trading limits allow this trade
+    """
+    today = datetime.now(timezone.utc).date().isoformat()
+    
+    # Count today's trades
+    today_trades = [t for t in portfolio.get('trades', []) if t.get('timestamp', '').startswith(today)]
+    
+    if len(today_trades) >= config['max_daily_trades']:
+        return {
+            "allowed": False,
+            "reason": f"Daily trade limit reached ({config['max_daily_trades']} trades)"
+        }
+    
+    # Check per-trade amount
+    if trade_amount > config['max_trade_amount']:
+        return {
+            "allowed": False,
+            "reason": f"Trade amount ${trade_amount:.2f} exceeds limit ${config['max_trade_amount']:.2f}"
+        }
+    
+    # Check total investment
+    total_invested = sum(pos['quantity'] * pos['avg_price'] for pos in portfolio.get('positions', {}).values())
+    
+    if total_invested + trade_amount > config['max_total_investment']:
+        return {
+            "allowed": False,
+            "reason": f"Total investment would exceed ${config['max_total_investment']:.2f}"
+        }
+    
+    return {"allowed": True}
+
+async def auto_trading_decision(symbol: str, config: Dict, portfolio_id: str = "default") -> Dict[str, Any]:
+    """
+    Make automated trading decision based on analysis and limits
+    
+    ⚠️ WARNING: This executes trades automatically. Use at your own risk.
+    """
+    try:
+        # Get stock analysis
+        analysis = await analyze_stock(symbol)
+        
+        if not analysis['success']:
+            return {
+                "success": False,
+                "action": "SKIP",
+                "reason": "Analysis failed",
+                "error": analysis.get('error')
+            }
+        
+        # Check if symbol is allowed
+        if config.get('allowed_symbols') and symbol not in config['allowed_symbols']:
+            return {
+                "success": False,
+                "action": "SKIP",
+                "reason": f"{symbol} not in allowed list"
+            }
+        
+        if symbol in config.get('blacklist_symbols', []):
+            return {
+                "success": False,
+                "action": "SKIP",
+                "reason": f"{symbol} is blacklisted"
+            }
+        
+        # Check confidence threshold
+        if analysis['confidence_score'] < config['min_confidence']:
+            return {
+                "success": False,
+                "action": "SKIP",
+                "reason": f"Confidence {analysis['confidence_score']}% below threshold {config['min_confidence']}%"
+            }
+        
+        # Get portfolio
+        portfolio = await db.portfolios.find_one({"portfolio_id": portfolio_id})
+        if not portfolio:
+            return {"success": False, "error": "Portfolio not found"}
+        
+        # Check if we already own this stock
+        current_position = portfolio.get('positions', {}).get(symbol)
+        
+        # Decision logic
+        action = analysis['action']  # BUY, SELL, or HOLD
+        
+        if action == "BUY" and not current_position:
+            # Calculate quantity based on max_trade_amount
+            price = analysis['current_price']
+            max_quantity = int(config['max_trade_amount'] / price)
+            
+            if max_quantity < 1:
+                return {
+                    "success": False,
+                    "action": "SKIP",
+                    "reason": f"Stock price ${price:.2f} exceeds max trade amount"
+                }
+            
+            # Check limits
+            trade_amount = price * max_quantity
+            limit_check = await check_auto_trading_limits(config, portfolio, trade_amount)
+            
+            if not limit_check['allowed']:
+                return {
+                    "success": False,
+                    "action": "SKIP",
+                    "reason": limit_check['reason']
+                }
+            
+            # Execute buy
+            result = await execute_paper_trade("buy", symbol, max_quantity, portfolio_id)
+            result['auto_trade'] = True
+            result['confidence'] = analysis['confidence_score']
+            result['reason'] = analysis['recommendation']
+            return result
+        
+        elif action == "SELL" and current_position:
+            # Sell entire position
+            quantity = current_position['quantity']
+            result = await execute_paper_trade("sell", symbol, quantity, portfolio_id)
+            result['auto_trade'] = True
+            result['confidence'] = analysis['confidence_score']
+            result['reason'] = analysis['recommendation']
+            return result
+        
+        elif current_position:
+            # Check stop-loss and take-profit
+            avg_price = current_position['avg_price']
+            current_price = analysis['current_price']
+            percent_change = ((current_price - avg_price) / avg_price) * 100
+            
+            if percent_change <= -config['stop_loss_percent']:
+                # Stop loss triggered
+                quantity = current_position['quantity']
+                result = await execute_paper_trade("sell", symbol, quantity, portfolio_id)
+                result['auto_trade'] = True
+                result['trigger'] = 'STOP_LOSS'
+                result['loss_percent'] = percent_change
+                return result
+            
+            elif percent_change >= config['take_profit_percent']:
+                # Take profit triggered
+                quantity = current_position['quantity']
+                result = await execute_paper_trade("sell", symbol, quantity, portfolio_id)
+                result['auto_trade'] = True
+                result['trigger'] = 'TAKE_PROFIT'
+                result['profit_percent'] = percent_change
+                return result
+        
+        return {
+            "success": True,
+            "action": "HOLD",
+            "reason": f"No action needed. Confidence: {analysis['confidence_score']}%"
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
 async def execute_paper_trade(action: str, symbol: str, quantity: int = 1, portfolio_id: str = "default") -> Dict[str, Any]:
     """
     Execute paper (simulated) trading with analysis
