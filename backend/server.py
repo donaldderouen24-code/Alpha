@@ -655,6 +655,22 @@ async def upload_document(file: UploadFile = File(...)):
     result = await analyze_document(content, file.filename)
     return result
 
+@api_router.post("/tools/clone-website")
+async def clone_website_endpoint(request: WebsiteCloneRequest):
+    """
+    Clone and analyze a website
+    """
+    result = await clone_website(request.url)
+    return result
+
+@api_router.post("/tools/create-website")
+async def create_website_endpoint(request: WebsiteCreateRequest):
+    """
+    Generate a complete website from description
+    """
+    result = await create_website(request.description, request.style, request.include_js)
+    return result
+
 @api_router.get("/conversations", response_model=List[Conversation])
 async def get_conversations():
     conversations = await db.conversations.find({}, {"_id": 0}).sort("updated_at", -1).to_list(100)
