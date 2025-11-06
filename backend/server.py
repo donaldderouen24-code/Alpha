@@ -18,6 +18,8 @@ import tempfile
 import requests
 from PyPDF2 import PdfReader
 import io
+from bs4 import BeautifulSoup
+import re
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
