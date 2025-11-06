@@ -767,6 +767,16 @@ async def get_available_tools():
             description="Analyze and extract information from PDF/text documents",
             enabled=True
         ),
+        ToolDefinition(
+            name="website_clone",
+            description="Clone and analyze any website from URL",
+            enabled=True
+        ),
+        ToolDefinition(
+            name="website_create",
+            description="Design and build complete websites from descriptions",
+            enabled=True
+        ),
     ]
     return tools
 
