@@ -415,6 +415,14 @@ def detect_tool_request(message: str) -> Optional[Dict[str, Any]]:
     if any(keyword in message_lower for keyword in ['generate image', 'create image', 'draw', 'make a picture']):
         return {"tool": "image_generation", "auto_detect": True}
     
+    # Website cloning keywords
+    if any(keyword in message_lower for keyword in ['clone this website', 'copy this site', 'analyze website', 'scrape']):
+        return {"tool": "website_clone", "auto_detect": True}
+    
+    # Website creation keywords
+    if any(keyword in message_lower for keyword in ['create website', 'build website', 'make a website', 'design website']):
+        return {"tool": "website_create", "auto_detect": True}
+    
     return None
 
 # =============== ROUTES ===============
