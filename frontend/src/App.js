@@ -372,11 +372,12 @@ function App() {
                 <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500/20 to-purple-600/20 rounded-2xl flex items-center justify-center border border-blue-500/30">
                   <Zap className="w-10 h-10 text-blue-400" />
                 </div>
-                <h2 className="text-3xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                  Ultimate AI Assistant
+                <h2 className="text-4xl font-bold mb-3 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
+                  ALPHA
                 </h2>
+                <p className="text-xl text-gray-300 mb-2 font-semibold">Ultimate AI System</p>
                 <p className="text-gray-400 mb-6">
-                  Clone any website or build new ones from scratch!
+                  Clone websites • Build apps • Execute code • Search web • Generate images • Database ops • And more!
                 </p>
                 <div className="grid grid-cols-3 gap-3 text-sm mb-6">
                   <button
