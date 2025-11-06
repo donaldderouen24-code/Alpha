@@ -100,6 +100,24 @@ class WebsiteCreateRequest(BaseModel):
     style: Optional[str] = "modern"  # modern, minimal, corporate, creative
     include_js: bool = True
 
+class FileOperationRequest(BaseModel):
+    operation: str  # create, read, edit, search
+    path: Optional[str] = None
+    content: Optional[str] = None
+    search_pattern: Optional[str] = None
+
+class DatabaseQueryRequest(BaseModel):
+    collection: str
+    operation: str  # find, insert, update, delete, aggregate
+    query: Optional[Dict] = None
+    data: Optional[Dict] = None
+
+class APITestRequest(BaseModel):
+    url: str
+    method: str = "GET"
+    headers: Optional[Dict] = None
+    body: Optional[Dict] = None
+
 # =============== TOOL FUNCTIONS ===============
 
 async def execute_python_code(code: str) -> Dict[str, Any]:
