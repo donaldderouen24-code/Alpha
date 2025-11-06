@@ -118,6 +118,16 @@ class APITestRequest(BaseModel):
     headers: Optional[Dict] = None
     body: Optional[Dict] = None
 
+class StockAnalysisRequest(BaseModel):
+    symbol: str
+    analysis_type: str = "full"  # full, technical, fundamental, prediction
+
+class StockTradeRequest(BaseModel):
+    action: str  # buy, sell, analyze
+    symbol: str
+    quantity: Optional[int] = None
+    portfolio_id: Optional[str] = "default"
+
 # =============== TOOL FUNCTIONS ===============
 
 async def execute_python_code(code: str) -> Dict[str, Any]:
