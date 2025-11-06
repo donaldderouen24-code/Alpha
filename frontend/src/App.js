@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import '@/App.css';
 import axios from 'axios';
-import { Send, Trash2, MessageSquare, Settings, Sparkles, Bot } from 'lucide-react';
+import { Send, Trash2, MessageSquare, Settings, Sparkles, Bot, Code, Search, Image as ImageIcon, FileText, Upload, X } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -15,8 +15,11 @@ function App() {
   const [selectedModel, setSelectedModel] = useState('gpt-4o-mini');
   const [selectedProvider, setSelectedProvider] = useState('openai');
   const [availableModels, setAvailableModels] = useState([]);
+  const [availableTools, setAvailableTools] = useState([]);
   const [showSettings, setShowSettings] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -29,6 +32,7 @@ function App() {
   useEffect(() => {
     loadConversations();
     loadModels();
+    loadTools();
   }, []);
 
   const loadConversations = async () => {
@@ -49,6 +53,15 @@ function App() {
     }
   };
 
+  const loadTools = async () => {
+    try {
+      const response = await axios.get(`${API}/tools`);
+      setAvailableTools(response.data);
+    } catch (error) {
+      console.error('Error loading tools:', error);
+    }
+  };
+
   const loadConversation = async (convSessionId) => {
     try {
       const response = await axios.get(`${API}/conversations/${convSessionId}`);
@@ -59,41 +72,82 @@ function App() {
     }
   };
 
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
+
+  const uploadDocument = async () => {
+    if (!selectedFile) return null;
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+      const response = await axios.post(`${API}/tools/upload-document`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      return null;
+    }
+  };
+
   const sendMessage = async () => {
-    if (!input.trim() || loading) return;
+    if ((!input.trim() && !selectedFile) || loading) return;
+
+    let messageText = input;
+
+    // Handle file upload
+    if (selectedFile) {
+      const uploadResult = await uploadDocument();
+      if (uploadResult && uploadResult.success) {
+        messageText = `Analyze this document: ${selectedFile.name}\n\nContent:\n${uploadResult.content}`;
+      } else {
+        alert('Failed to upload document');
+        return;
+      }
+    }
 
     const userMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: input,
+      content: input || `Uploaded: ${selectedFile.name}`,
       timestamp: new Date().toISOString(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
+    setSelectedFile(null);
     setLoading(true);
 
     try {
       const response = await axios.post(`${API}/chat`, {
-        message: input,
+        message: messageText,
         session_id: sessionId,
         model: selectedModel,
         provider: selectedProvider,
+        enable_tools: true,
       });
 
       const assistantMessage = {
         id: Date.now().toString() + '1',
         role: 'assistant',
         content: response.data.response,
+        tool_output: response.data.tool_calls?.[0]?.result,
+        image_data: response.data.image_data,
         timestamp: new Date().toISOString(),
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-      
+
       if (!sessionId) {
         setSessionId(response.data.session_id);
       }
-      
+
       loadConversations();
     } catch (error) {
       console.error('Error sending message:', error);
@@ -112,6 +166,7 @@ function App() {
   const startNewConversation = () => {
     setMessages([]);
     setSessionId(null);
+    setSelectedFile(null);
   };
 
   const deleteConversation = async (convSessionId) => {
@@ -126,6 +181,10 @@ function App() {
     }
   };
 
+  const insertPrompt = (prompt) => {
+    setInput(prompt);
+  };
+
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
       {/* Sidebar */}
@@ -136,7 +195,7 @@ function App() {
               <Sparkles className="w-6 h-6" />
             </div>
             <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              AI Assistant
+              AI Assistant Pro
             </h1>
           </div>
           <button
@@ -191,12 +250,22 @@ function App() {
         <div className="p-4 border-t border-gray-700/50">
           <button
             onClick={() => setShowSettings(!showSettings)}
-            className="w-full px-4 py-2 bg-gray-700/50 hover:bg-gray-700 rounded-lg transition-all flex items-center justify-center gap-2"
+            className="w-full px-4 py-2 bg-gray-700/50 hover:bg-gray-700 rounded-lg transition-all flex items-center justify-center gap-2 mb-3"
             data-testid="settings-btn"
           >
             <Settings className="w-4 h-4" />
             Settings
           </button>
+          
+          <div className="text-xs text-gray-400 space-y-1">
+            <p className="font-semibold text-gray-300">Available Tools:</p>
+            {availableTools.filter(t => t.enabled).map((tool) => (
+              <div key={tool.name} className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                <span className="capitalize">{tool.name.replace('_', ' ')}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -210,9 +279,9 @@ function App() {
                 <Bot className="w-5 h-5 text-blue-400" />
               </div>
               <div>
-                <h2 className="font-semibold text-lg">AI Chat</h2>
+                <h2 className="font-semibold text-lg">AI Chat with Advanced Tools</h2>
                 <p className="text-sm text-gray-400">
-                  Powered by {selectedProvider} - {selectedModel}
+                  {selectedProvider} - {selectedModel}
                 </p>
               </div>
             </div>
@@ -250,69 +319,111 @@ function App() {
         <div className="flex-1 overflow-y-auto p-6 space-y-6" data-testid="messages-container">
           {messages.length === 0 && (
             <div className="flex items-center justify-center h-full">
-              <div className="text-center max-w-md">
+              <div className="text-center max-w-3xl">
                 <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500/20 to-purple-600/20 rounded-2xl flex items-center justify-center border border-blue-500/30">
                   <Sparkles className="w-10 h-10 text-blue-400" />
                 </div>
                 <h2 className="text-2xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                  Welcome to AI Assistant
+                  AI Assistant with Advanced Tools
                 </h2>
                 <p className="text-gray-400 mb-6">
-                  I'm an advanced AI with comprehensive capabilities. I can help you with:
+                  I can help you with multiple capabilities:
                 </p>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="p-3 bg-gray-800/50 rounded-lg border border-gray-700/50">
-                    <p className="font-medium mb-1">💡 Problem Solving</p>
-                    <p className="text-gray-400 text-xs">Complex analysis & reasoning</p>
-                  </div>
-                  <div className="p-3 bg-gray-800/50 rounded-lg border border-gray-700/50">
-                    <p className="font-medium mb-1">💻 Coding</p>
-                    <p className="text-gray-400 text-xs">Programming assistance</p>
-                  </div>
-                  <div className="p-3 bg-gray-800/50 rounded-lg border border-gray-700/50">
-                    <p className="font-medium mb-1">✍️ Writing</p>
-                    <p className="text-gray-400 text-xs">Creative & technical content</p>
-                  </div>
-                  <div className="p-3 bg-gray-800/50 rounded-lg border border-gray-700/50">
-                    <p className="font-medium mb-1">📚 Learning</p>
-                    <p className="text-gray-400 text-xs">Explanations & tutorials</p>
-                  </div>
+                <div className="grid grid-cols-2 gap-3 text-sm mb-6">
+                  <button
+                    onClick={() => insertPrompt('Write Python code to calculate fibonacci numbers')}
+                    className="p-4 bg-gray-800/50 rounded-lg border border-gray-700/50 hover:border-blue-500/50 transition-all text-left"
+                  >
+                    <Code className="w-5 h-5 text-blue-400 mb-2" />
+                    <p className="font-medium mb-1">💻 Code Execution</p>
+                    <p className="text-gray-400 text-xs">Write & run Python code</p>
+                  </button>
+                  <button
+                    onClick={() => insertPrompt('Search for latest AI developments in 2025')}
+                    className="p-4 bg-gray-800/50 rounded-lg border border-gray-700/50 hover:border-blue-500/50 transition-all text-left"
+                  >
+                    <Search className="w-5 h-5 text-green-400 mb-2" />
+                    <p className="font-medium mb-1">🔍 Web Search</p>
+                    <p className="text-gray-400 text-xs">Find current information</p>
+                  </button>
+                  <button
+                    onClick={() => insertPrompt('Generate image of a futuristic city at sunset')}
+                    className="p-4 bg-gray-800/50 rounded-lg border border-gray-700/50 hover:border-blue-500/50 transition-all text-left"
+                  >
+                    <ImageIcon className="w-5 h-5 text-purple-400 mb-2" />
+                    <p className="font-medium mb-1">🎨 Image Generation</p>
+                    <p className="text-gray-400 text-xs">Create images with DALL-E</p>
+                  </button>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-4 bg-gray-800/50 rounded-lg border border-gray-700/50 hover:border-blue-500/50 transition-all text-left"
+                  >
+                    <FileText className="w-5 h-5 text-orange-400 mb-2" />
+                    <p className="font-medium mb-1">📄 Document Analysis</p>
+                    <p className="text-gray-400 text-xs">Upload & analyze PDFs</p>
+                  </button>
                 </div>
-                <p className="text-gray-500 text-sm mt-6">Start a conversation below!</p>
+                <p className="text-gray-500 text-sm">Click any example or type your own message!</p>
               </div>
             </div>
           )}
 
           {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex gap-4 ${
-                message.role === 'user' ? 'justify-end' : 'justify-start'
-              }`}
-              data-testid={`message-${message.role}`}
-            >
-              {message.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                  <Bot className="w-5 h-5" />
-                </div>
-              )}
+            <div key={message.id}>
               <div
-                className={`max-w-2xl px-5 py-3 rounded-2xl ${
-                  message.role === 'user'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
-                    : 'bg-gray-800/70 border border-gray-700/50'
+                className={`flex gap-4 ${
+                  message.role === 'user' ? 'justify-end' : 'justify-start'
                 }`}
+                data-testid={`message-${message.role}`}
               >
-                <p className="whitespace-pre-wrap">{message.content}</p>
-              </div>
-              {message.role === 'user' && (
-                <div className="w-8 h-8 rounded-lg bg-gray-700 flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm font-medium">You</span>
+                {message.role === 'assistant' && (
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                    <Bot className="w-5 h-5" />
+                  </div>
+                )}
+                <div
+                  className={`max-w-2xl px-5 py-3 rounded-2xl ${
+                    message.role === 'user'
+                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
+                      : 'bg-gray-800/70 border border-gray-700/50'
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap">{message.content}</p>
+                  
+                  {/* Tool Output */}
+                  {message.tool_output && (
+                    <div className="mt-3 p-3 bg-gray-900/50 rounded-lg border border-gray-600/50">
+                      <p className="text-xs text-gray-400 mb-2 font-semibold">Tool Output:</p>
+                      {message.tool_output.success ? (
+                        <pre className="text-xs text-green-400 whitespace-pre-wrap">
+                          {message.tool_output.output || JSON.stringify(message.tool_output.results, null, 2)}
+                        </pre>
+                      ) : (
+                        <p className="text-xs text-red-400">{message.tool_output.error}</p>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Generated Image */}
+                  {message.image_data && (
+                    <div className="mt-3">
+                      <img
+                        src={`data:image/png;base64,${message.image_data}`}
+                        alt="Generated"
+                        className="rounded-lg max-w-full"
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
+                {message.role === 'user' && (
+                  <div className="w-8 h-8 rounded-lg bg-gray-700 flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-medium">You</span>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
-          
+
           {loading && (
             <div className="flex gap-4 justify-start">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
@@ -320,9 +431,9 @@ function App() {
               </div>
               <div className="max-w-2xl px-5 py-3 rounded-2xl bg-gray-800/70 border border-gray-700/50">
                 <div className="flex gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                 </div>
               </div>
             </div>
@@ -332,20 +443,47 @@ function App() {
 
         {/* Input Area */}
         <div className="p-6 border-t border-gray-700/50 bg-gray-800/30 backdrop-blur-lg">
+          {selectedFile && (
+            <div className="mb-3 flex items-center gap-2 p-2 bg-gray-700/50 rounded-lg">
+              <FileText className="w-4 h-4 text-blue-400" />
+              <span className="text-sm flex-1">{selectedFile.name}</span>
+              <button
+                onClick={() => setSelectedFile(null)}
+                className="p-1 hover:bg-gray-600 rounded"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
           <div className="flex gap-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              onChange={handleFileSelect}
+              accept=".pdf,.txt,.md,.py,.js,.json"
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="px-4 py-3 bg-gray-700/50 hover:bg-gray-700 rounded-xl transition-all"
+              title="Upload document"
+              data-testid="upload-btn"
+            >
+              <Upload className="w-5 h-5" />
+            </button>
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="Ask me anything..."
+              placeholder="Ask anything, run code, search web, generate images..."
               className="flex-1 px-5 py-3 bg-gray-700/50 border border-gray-600/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all"
               disabled={loading}
               data-testid="message-input"
             />
             <button
               onClick={sendMessage}
-              disabled={loading || !input.trim()}
+              disabled={loading || (!input.trim() && !selectedFile)}
               className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl font-medium hover:from-blue-600 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg"
               data-testid="send-message-btn"
             >
@@ -354,7 +492,7 @@ function App() {
             </button>
           </div>
           <p className="text-xs text-gray-500 mt-3 text-center">
-            AI Assistant can make mistakes. Verify important information.
+            🚀 Supports code execution, web search, image generation, and document analysis
           </p>
         </div>
       </div>
