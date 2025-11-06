@@ -1448,6 +1448,16 @@ async def get_available_tools():
             description="Test any API endpoint with custom requests",
             enabled=True
         ),
+        ToolDefinition(
+            name="stock_analysis",
+            description="AI-powered stock analysis with price predictions and trading signals",
+            enabled=True
+        ),
+        ToolDefinition(
+            name="paper_trading",
+            description="Simulated stock trading for learning (no real money)",
+            enabled=True
+        ),
     ]
     return tools
 
