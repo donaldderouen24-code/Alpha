@@ -525,6 +525,36 @@ Be helpful, accurate, and use tools when appropriate."""
                 
                 tool_result = await web_search(query)
                 tool_calls.append({"tool": "web_search", "result": tool_result})
+            
+            elif 'clone' in request.message.lower() and ('website' in request.message.lower() or 'site' in request.message.lower() or 'http' in request.message.lower()):
+                # Extract URL
+                url_match = re.search(r'https?://[^\s]+', request.message)
+                if url_match:
+                    url = url_match.group(0).rstrip('.,;)')
+                    tool_result = await clone_website(url)
+                    tool_calls.append({"tool": "website_clone", "result": tool_result})
+            
+            elif 'create website' in request.message.lower() or 'build website' in request.message.lower() or 'make a website' in request.message.lower():
+                # Extract description
+                description = request.message
+                for phrase in ['create website', 'build website', 'make a website', 'design website']:
+                    if phrase in description.lower():
+                        description = description.lower().split(phrase)[1].strip()
+                        if description.startswith('for') or description.startswith('about'):
+                            description = description.split(None, 1)[1]
+                        break
+                
+                # Detect style
+                style = "modern"
+                if "minimal" in request.message.lower():
+                    style = "minimal"
+                elif "corporate" in request.message.lower():
+                    style = "corporate"
+                elif "creative" in request.message.lower():
+                    style = "creative"
+                
+                tool_result = await create_website(description, style=style)
+                tool_calls.append({"tool": "website_create", "result": tool_result})
         
         # Prepare message for AI
         ai_message = request.message
