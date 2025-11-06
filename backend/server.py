@@ -92,6 +92,14 @@ class ImageGenerationRequest(BaseModel):
     prompt: str
     model: str = "gpt-image-1"
 
+class WebsiteCloneRequest(BaseModel):
+    url: str
+
+class WebsiteCreateRequest(BaseModel):
+    description: str
+    style: Optional[str] = "modern"  # modern, minimal, corporate, creative
+    include_js: bool = True
+
 # =============== TOOL FUNCTIONS ===============
 
 async def execute_python_code(code: str) -> Dict[str, Any]:
