@@ -895,6 +895,45 @@ async def create_website_endpoint(request: WebsiteCreateRequest):
     result = await create_website(request.description, request.style, request.include_js)
     return result
 
+@api_router.post("/tools/file-operation")
+async def file_operation_endpoint(request: FileOperationRequest):
+    """
+    Advanced file operations
+    """
+    result = await file_operation(
+        request.operation,
+        request.path,
+        request.content,
+        request.search_pattern
+    )
+    return result
+
+@api_router.post("/tools/database-query")
+async def database_query_endpoint(request: DatabaseQueryRequest):
+    """
+    Direct database operations
+    """
+    result = await database_query(
+        request.collection,
+        request.operation,
+        request.query,
+        request.data
+    )
+    return result
+
+@api_router.post("/tools/test-api")
+async def test_api_endpoint(request: APITestRequest):
+    """
+    Test any API endpoint
+    """
+    result = await test_api(
+        request.url,
+        request.method,
+        request.headers,
+        request.body
+    )
+    return result
+
 @api_router.get("/conversations", response_model=List[Conversation])
 async def get_conversations():
     conversations = await db.conversations.find({}, {"_id": 0}).sort("updated_at", -1).to_list(100)
