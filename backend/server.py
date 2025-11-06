@@ -374,6 +374,153 @@ Return ONLY the complete HTML code (with embedded CSS and JS). No explanations."
             "error": str(e)
         }
 
+async def file_operation(operation: str, path: str = None, content: str = None, search_pattern: str = None) -> Dict[str, Any]:
+    """
+    Advanced file operations - ALPHA's file system access
+    """
+    try:
+        if operation == "create" and path and content:
+            # Create a file
+            with open(path, 'w') as f:
+                f.write(content)
+            return {
+                "success": True,
+                "operation": "create",
+                "path": path,
+                "message": f"File created: {path}"
+            }
+        
+        elif operation == "read" and path:
+            # Read a file
+            with open(path, 'r') as f:
+                file_content = f.read()
+            return {
+                "success": True,
+                "operation": "read",
+                "path": path,
+                "content": file_content[:5000]  # First 5000 chars
+            }
+        
+        elif operation == "search" and search_pattern:
+            # Search for files/patterns
+            import glob
+            matches = glob.glob(search_pattern, recursive=True)
+            return {
+                "success": True,
+                "operation": "search",
+                "pattern": search_pattern,
+                "matches": matches[:50]  # First 50 matches
+            }
+        
+        elif operation == "list" and path:
+            # List directory contents
+            import os
+            items = os.listdir(path)
+            return {
+                "success": True,
+                "operation": "list",
+                "path": path,
+                "items": items[:100]
+            }
+        
+        else:
+            return {
+                "success": False,
+                "error": "Invalid operation or missing parameters"
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+async def database_query(collection: str, operation: str, query: Dict = None, data: Dict = None) -> Dict[str, Any]:
+    """
+    Direct database operations - ALPHA's database access
+    """
+    try:
+        coll = db[collection]
+        
+        if operation == "find":
+            results = await coll.find(query or {}, {"_id": 0}).limit(20).to_list(20)
+            return {
+                "success": True,
+                "operation": "find",
+                "collection": collection,
+                "count": len(results),
+                "results": results
+            }
+        
+        elif operation == "insert" and data:
+            result = await coll.insert_one(data)
+            return {
+                "success": True,
+                "operation": "insert",
+                "collection": collection,
+                "inserted_id": str(result.inserted_id)
+            }
+        
+        elif operation == "count":
+            count = await coll.count_documents(query or {})
+            return {
+                "success": True,
+                "operation": "count",
+                "collection": collection,
+                "count": count
+            }
+        
+        elif operation == "aggregate" and query:
+            results = await coll.aggregate(query).to_list(20)
+            return {
+                "success": True,
+                "operation": "aggregate",
+                "collection": collection,
+                "results": results
+            }
+        
+        else:
+            return {
+                "success": False,
+                "error": "Invalid operation"
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+async def test_api(url: str, method: str = "GET", headers: Dict = None, body: Dict = None) -> Dict[str, Any]:
+    """
+    Test any API endpoint - ALPHA's API testing capability
+    """
+    try:
+        if method.upper() == "GET":
+            response = requests.get(url, headers=headers, timeout=10)
+        elif method.upper() == "POST":
+            response = requests.post(url, headers=headers, json=body, timeout=10)
+        elif method.upper() == "PUT":
+            response = requests.put(url, headers=headers, json=body, timeout=10)
+        elif method.upper() == "DELETE":
+            response = requests.delete(url, headers=headers, timeout=10)
+        else:
+            return {"success": False, "error": "Unsupported HTTP method"}
+        
+        return {
+            "success": True,
+            "url": url,
+            "method": method,
+            "status_code": response.status_code,
+            "status_text": response.reason,
+            "headers": dict(response.headers),
+            "body": response.text[:2000],  # First 2000 chars
+            "response_time": response.elapsed.total_seconds()
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
 async def analyze_document(file_content: bytes, filename: str) -> Dict[str, Any]:
     """
     Analyze uploaded document (PDF or text)
