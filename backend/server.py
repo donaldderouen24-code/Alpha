@@ -1511,6 +1511,186 @@ async def get_portfolio(portfolio_id: str = "default"):
             "error": str(e)
         }
 
+@api_router.post("/tools/configure-auto-trading")
+async def configure_auto_trading(config: AutoTradingConfig):
+    """
+    Configure automated trading settings
+    
+    ⚠️ EXTREME RISK WARNING:
+    - Automated trading can lose money quickly
+    - Use at your own risk
+    - Start with small limits
+    - Monitor closely
+    - No guarantees of profit
+    """
+    try:
+        # Save config to database
+        await db.auto_trading_configs.update_one(
+            {"portfolio_id": config.portfolio_id},
+            {"$set": config.model_dump()},
+            upsert=True
+        )
+        
+        return {
+            "success": True,
+            "message": "Auto-trading configured",
+            "config": config.model_dump(),
+            "warning": "⚠️ AUTO-TRADING IS HIGH RISK. Monitor closely and can lose money."
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@api_router.get("/tools/auto-trading-config/{portfolio_id}")
+async def get_auto_trading_config(portfolio_id: str = "default"):
+    """
+    Get current auto-trading configuration
+    """
+    try:
+        config = await db.auto_trading_configs.find_one(
+            {"portfolio_id": portfolio_id},
+            {"_id": 0}
+        )
+        
+        if not config:
+            # Return default config
+            config = AutoTradingConfig(portfolio_id=portfolio_id).model_dump()
+        
+        return {
+            "success": True,
+            "config": config
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@api_router.post("/tools/execute-auto-trade")
+async def execute_auto_trade(request: StockTradeRequest):
+    """
+    Execute a single automated trade decision
+    
+    ⚠️ WARNING: This will automatically execute trades based on AI analysis
+    """
+    try:
+        # Get auto-trading config
+        config = await db.auto_trading_configs.find_one(
+            {"portfolio_id": request.portfolio_id}
+        )
+        
+        if not config:
+            return {
+                "success": False,
+                "error": "Auto-trading not configured. Configure first."
+            }
+        
+        if not config.get('enabled'):
+            return {
+                "success": False,
+                "error": "Auto-trading is disabled"
+            }
+        
+        # Execute automated decision
+        result = await auto_trading_decision(
+            request.symbol,
+            config,
+            request.portfolio_id
+        )
+        
+        return result
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@api_router.post("/tools/run-auto-trading-scan")
+async def run_auto_trading_scan(symbols: List[str], portfolio_id: str = "default"):
+    """
+    Scan multiple stocks and execute auto-trades based on signals
+    
+    ⚠️ HIGH RISK: Will automatically trade based on AI analysis
+    """
+    try:
+        # Get config
+        config = await db.auto_trading_configs.find_one(
+            {"portfolio_id": portfolio_id}
+        )
+        
+        if not config or not config.get('enabled'):
+            return {
+                "success": False,
+                "error": "Auto-trading not enabled"
+            }
+        
+        results = []
+        
+        for symbol in symbols:
+            result = await auto_trading_decision(symbol, config, portfolio_id)
+            results.append({
+                "symbol": symbol,
+                "result": result
+            })
+        
+        return {
+            "success": True,
+            "scanned_symbols": len(symbols),
+            "results": results
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@api_router.post("/tools/emergency-stop-auto-trading")
+async def emergency_stop(portfolio_id: str = "default"):
+    """
+    EMERGENCY STOP - Disable auto-trading and sell all positions
+    """
+    try:
+        # Disable auto-trading
+        await db.auto_trading_configs.update_one(
+            {"portfolio_id": portfolio_id},
+            {"$set": {"enabled": False}}
+        )
+        
+        # Get portfolio
+        portfolio = await db.portfolios.find_one({"portfolio_id": portfolio_id})
+        
+        if not portfolio:
+            return {"success": False, "error": "Portfolio not found"}
+        
+        # Sell all positions
+        sell_results = []
+        for symbol, position in portfolio.get('positions', {}).items():
+            result = await execute_paper_trade(
+                "sell",
+                symbol,
+                position['quantity'],
+                portfolio_id
+            )
+            sell_results.append(result)
+        
+        return {
+            "success": True,
+            "message": "🛑 EMERGENCY STOP EXECUTED",
+            "auto_trading_disabled": True,
+            "positions_sold": len(sell_results),
+            "sell_results": sell_results
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
 @api_router.get("/conversations", response_model=List[Conversation])
 async def get_conversations():
     conversations = await db.conversations.find({}, {"_id": 0}).sort("updated_at", -1).to_list(100)
