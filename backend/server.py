@@ -1249,6 +1249,84 @@ async def test_api_endpoint(request: APITestRequest):
     )
     return result
 
+@api_router.post("/tools/analyze-stock")
+async def analyze_stock_endpoint(request: StockAnalysisRequest):
+    """
+    Analyze stock with AI-powered predictions
+    """
+    result = await analyze_stock(request.symbol, request.analysis_type)
+    return result
+
+@api_router.post("/tools/trade-stock")
+async def trade_stock_endpoint(request: StockTradeRequest):
+    """
+    Execute paper trading (simulation only - no real money)
+    
+    ⚠️ IMPORTANT: This is PAPER TRADING for educational purposes.
+    No real money is involved. Always do your own research before investing real money.
+    """
+    if request.action.lower() in ["buy", "sell"]:
+        result = await execute_paper_trade(
+            request.action,
+            request.symbol,
+            request.quantity or 1,
+            request.portfolio_id
+        )
+    elif request.action.lower() == "analyze":
+        result = await analyze_stock(request.symbol)
+    else:
+        result = {"success": False, "error": "Invalid action"}
+    
+    return result
+
+@api_router.get("/tools/portfolio/{portfolio_id}")
+async def get_portfolio(portfolio_id: str = "default"):
+    """
+    Get paper trading portfolio status
+    """
+    try:
+        portfolio = await db.portfolios.find_one({"portfolio_id": portfolio_id}, {"_id": 0})
+        
+        if not portfolio:
+            return {
+                "success": False,
+                "error": "Portfolio not found"
+            }
+        
+        # Calculate current values
+        total_value = portfolio['cash']
+        positions_value = 0
+        
+        for symbol, position in portfolio['positions'].items():
+            stock = yf.Ticker(symbol)
+            current_price = stock.history(period="1d")['Close'].iloc[-1]
+            position_value = current_price * position['quantity']
+            positions_value += position_value
+            
+            position['current_price'] = float(current_price)
+            position['current_value'] = float(position_value)
+            position['profit_loss'] = float((current_price - position['avg_price']) * position['quantity'])
+            position['profit_loss_percent'] = float(((current_price - position['avg_price']) / position['avg_price']) * 100)
+        
+        total_value += positions_value
+        
+        return {
+            "success": True,
+            "portfolio_id": portfolio_id,
+            "cash": portfolio['cash'],
+            "positions_value": positions_value,
+            "total_value": total_value,
+            "total_profit_loss": total_value - 100000,  # Started with $100k
+            "total_return_percent": ((total_value - 100000) / 100000) * 100,
+            "positions": portfolio['positions'],
+            "recent_trades": portfolio['trades'][-10:]  # Last 10 trades
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
 @api_router.get("/conversations", response_model=List[Conversation])
 async def get_conversations():
     conversations = await db.conversations.find({}, {"_id": 0}).sort("updated_at", -1).to_list(100)
