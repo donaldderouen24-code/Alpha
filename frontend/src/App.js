@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import '@/App.css';
 import axios from 'axios';
-import { Send, Trash2, MessageSquare, Settings, Sparkles, Bot, Code, Search, Image as ImageIcon, FileText, Upload, X } from 'lucide-react';
+import { Send, Trash2, MessageSquare, Settings, Sparkles, Bot, Code, Search, Image as ImageIcon, FileText, Upload, X, Globe, Zap, Eye } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -18,6 +18,7 @@ function App() {
   const [availableTools, setAvailableTools] = useState([]);
   const [showSettings, setShowSettings] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [previewHtml, setPreviewHtml] = useState(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -167,6 +168,7 @@ function App() {
     setMessages([]);
     setSessionId(null);
     setSelectedFile(null);
+    setPreviewHtml(null);
   };
 
   const deleteConversation = async (convSessionId) => {
@@ -185,6 +187,20 @@ function App() {
     setInput(prompt);
   };
 
+  const previewWebsite = (html) => {
+    setPreviewHtml(html);
+  };
+
+  const downloadWebsite = (html, filename = 'generated-website.html') => {
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
       {/* Sidebar */}
@@ -194,9 +210,12 @@ function App() {
             <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
               <Sparkles className="w-6 h-6" />
             </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              AI Assistant Pro
-            </h1>
+            <div>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                AI Assistant Pro
+              </h1>
+              <p className="text-xs text-gray-400">Ultimate Edition</p>
+            </div>
           </div>
           <button
             onClick={startNewConversation}
@@ -258,11 +277,11 @@ function App() {
           </button>
           
           <div className="text-xs text-gray-400 space-y-1">
-            <p className="font-semibold text-gray-300">Available Tools:</p>
+            <p className="font-semibold text-gray-300">🛠️ Tools ({availableTools.filter(t => t.enabled).length}):</p>
             {availableTools.filter(t => t.enabled).map((tool) => (
               <div key={tool.name} className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                <span className="capitalize">{tool.name.replace('_', ' ')}</span>
+                <span className="capitalize text-xs">{tool.name.replace('_', ' ')}</span>
               </div>
             ))}
           </div>
@@ -279,7 +298,7 @@ function App() {
                 <Bot className="w-5 h-5 text-blue-400" />
               </div>
               <div>
-                <h2 className="font-semibold text-lg">AI Chat with Advanced Tools</h2>
+                <h2 className="font-semibold text-lg">AI with Website Cloning & Creation</h2>
                 <p className="text-sm text-gray-400">
                   {selectedProvider} - {selectedModel}
                 </p>
@@ -315,55 +334,101 @@ function App() {
           </div>
         )}
 
+        {/* Website Preview Modal */}
+        {previewHtml && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800 rounded-lg w-full max-w-6xl h-5/6 flex flex-col">
+              <div className="p-4 border-b border-gray-700 flex justify-between items-center">
+                <h3 className="font-semibold text-lg">Website Preview</h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => downloadWebsite(previewHtml)}
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-sm"
+                  >
+                    Download HTML
+                  </button>
+                  <button
+                    onClick={() => setPreviewHtml(null)}
+                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+              <iframe
+                srcDoc={previewHtml}
+                className="flex-1 w-full bg-white"
+                title="Website Preview"
+              />
+            </div>
+          </div>
+        )}
+
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6" data-testid="messages-container">
           {messages.length === 0 && (
             <div className="flex items-center justify-center h-full">
-              <div className="text-center max-w-3xl">
+              <div className="text-center max-w-4xl">
                 <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500/20 to-purple-600/20 rounded-2xl flex items-center justify-center border border-blue-500/30">
-                  <Sparkles className="w-10 h-10 text-blue-400" />
+                  <Zap className="w-10 h-10 text-blue-400" />
                 </div>
-                <h2 className="text-2xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                  AI Assistant with Advanced Tools
+                <h2 className="text-3xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                  Ultimate AI Assistant
                 </h2>
                 <p className="text-gray-400 mb-6">
-                  I can help you with multiple capabilities:
+                  Clone any website or build new ones from scratch!
                 </p>
-                <div className="grid grid-cols-2 gap-3 text-sm mb-6">
+                <div className="grid grid-cols-3 gap-3 text-sm mb-6">
                   <button
-                    onClick={() => insertPrompt('Write Python code to calculate fibonacci numbers')}
+                    onClick={() => insertPrompt('Write Python code to sort a list of numbers')}
                     className="p-4 bg-gray-800/50 rounded-lg border border-gray-700/50 hover:border-blue-500/50 transition-all text-left"
                   >
                     <Code className="w-5 h-5 text-blue-400 mb-2" />
                     <p className="font-medium mb-1">💻 Code Execution</p>
-                    <p className="text-gray-400 text-xs">Write & run Python code</p>
+                    <p className="text-gray-400 text-xs">Run Python code</p>
                   </button>
                   <button
-                    onClick={() => insertPrompt('Search for latest AI developments in 2025')}
+                    onClick={() => insertPrompt('Search for latest web development trends')}
                     className="p-4 bg-gray-800/50 rounded-lg border border-gray-700/50 hover:border-blue-500/50 transition-all text-left"
                   >
                     <Search className="w-5 h-5 text-green-400 mb-2" />
                     <p className="font-medium mb-1">🔍 Web Search</p>
-                    <p className="text-gray-400 text-xs">Find current information</p>
+                    <p className="text-gray-400 text-xs">Find info online</p>
                   </button>
                   <button
-                    onClick={() => insertPrompt('Generate image of a futuristic city at sunset')}
+                    onClick={() => insertPrompt('Generate image of modern office space')}
                     className="p-4 bg-gray-800/50 rounded-lg border border-gray-700/50 hover:border-blue-500/50 transition-all text-left"
                   >
                     <ImageIcon className="w-5 h-5 text-purple-400 mb-2" />
-                    <p className="font-medium mb-1">🎨 Image Generation</p>
-                    <p className="text-gray-400 text-xs">Create images with DALL-E</p>
+                    <p className="font-medium mb-1">🎨 Image Gen</p>
+                    <p className="text-gray-400 text-xs">Create images</p>
                   </button>
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     className="p-4 bg-gray-800/50 rounded-lg border border-gray-700/50 hover:border-blue-500/50 transition-all text-left"
                   >
                     <FileText className="w-5 h-5 text-orange-400 mb-2" />
-                    <p className="font-medium mb-1">📄 Document Analysis</p>
-                    <p className="text-gray-400 text-xs">Upload & analyze PDFs</p>
+                    <p className="font-medium mb-1">📄 Doc Analysis</p>
+                    <p className="text-gray-400 text-xs">Analyze PDFs</p>
+                  </button>
+                  <button
+                    onClick={() => insertPrompt('Clone this website: https://example.com')}
+                    className="p-4 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg border border-cyan-500/50 hover:border-cyan-400 transition-all text-left"
+                  >
+                    <Globe className="w-5 h-5 text-cyan-400 mb-2" />
+                    <p className="font-medium mb-1">🌐 Clone Website</p>
+                    <p className="text-gray-400 text-xs">Copy any site</p>
+                  </button>
+                  <button
+                    onClick={() => insertPrompt('Create website for a coffee shop with modern design')}
+                    className="p-4 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-lg border border-pink-500/50 hover:border-pink-400 transition-all text-left"
+                  >
+                    <Zap className="w-5 h-5 text-pink-400 mb-2" />
+                    <p className="font-medium mb-1">✨ Build Website</p>
+                    <p className="text-gray-400 text-xs">Generate full sites</p>
                   </button>
                 </div>
-                <p className="text-gray-500 text-sm">Click any example or type your own message!</p>
+                <p className="text-gray-500 text-sm">Try any capability above! 🚀</p>
               </div>
             </div>
           )}
@@ -381,23 +446,77 @@ function App() {
                     <Bot className="w-5 h-5" />
                   </div>
                 )}
-                <div
-                  className={`max-w-2xl px-5 py-3 rounded-2xl ${
-                    message.role === 'user'
-                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
-                      : 'bg-gray-800/70 border border-gray-700/50'
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap">{message.content}</p>
+                <div className="max-w-3xl">
+                  <div
+                    className={`px-5 py-3 rounded-2xl ${
+                      message.role === 'user'
+                        ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
+                        : 'bg-gray-800/70 border border-gray-700/50'
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap">{message.content}</p>
+                  </div>
                   
                   {/* Tool Output */}
                   {message.tool_output && (
-                    <div className="mt-3 p-3 bg-gray-900/50 rounded-lg border border-gray-600/50">
-                      <p className="text-xs text-gray-400 mb-2 font-semibold">Tool Output:</p>
+                    <div className="mt-3 p-4 bg-gray-900/50 rounded-lg border border-gray-600/50">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs text-gray-400 font-semibold">🔧 Tool Output</p>
+                        {message.tool_output.html && (
+                          <button
+                            onClick={() => previewWebsite(message.tool_output.html)}
+                            className="px-3 py-1 bg-blue-500 hover:bg-blue-600 rounded text-xs flex items-center gap-1"
+                          >
+                            <Eye className="w-3 h-3" />
+                            Preview Website
+                          </button>
+                        )}
+                      </div>
                       {message.tool_output.success ? (
-                        <pre className="text-xs text-green-400 whitespace-pre-wrap">
-                          {message.tool_output.output || JSON.stringify(message.tool_output.results, null, 2)}
-                        </pre>
+                        <div className="space-y-2">
+                          {message.tool_output.output && (
+                            <pre className="text-xs text-green-400 whitespace-pre-wrap">
+                              {message.tool_output.output}
+                            </pre>
+                          )}
+                          {message.tool_output.results && (
+                            <div className="text-xs text-gray-300">
+                              {Array.isArray(message.tool_output.results) ? (
+                                message.tool_output.results.map((r, i) => (
+                                  <div key={i} className="mb-2">
+                                    • {r}
+                                  </div>
+                                ))
+                              ) : (
+                                <pre>{JSON.stringify(message.tool_output.results, null, 2)}</pre>
+                              )}
+                            </div>
+                          )}
+                          {message.tool_output.title && (
+                            <div className="text-sm">
+                              <p className="text-gray-400">Title: <span className="text-white">{message.tool_output.title}</span></p>
+                              {message.tool_output.headings && message.tool_output.headings.length > 0 && (
+                                <div className="mt-2">
+                                  <p className="text-gray-400 text-xs">Headings:</p>
+                                  {message.tool_output.headings.slice(0, 5).map((h, i) => (
+                                    <p key={i} className="text-xs text-gray-300 ml-2">• {h}</p>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {message.tool_output.html && (
+                            <div className="mt-2">
+                              <p className="text-xs text-green-400">✅ Website generated successfully!</p>
+                              <button
+                                onClick={() => downloadWebsite(message.tool_output.html)}
+                                className="mt-2 px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs"
+                              >
+                                Download HTML
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <p className="text-xs text-red-400">{message.tool_output.error}</p>
                       )}
@@ -410,7 +529,7 @@ function App() {
                       <img
                         src={`data:image/png;base64,${message.image_data}`}
                         alt="Generated"
-                        className="rounded-lg max-w-full"
+                        className="rounded-lg max-w-full shadow-lg"
                       />
                     </div>
                   )}
@@ -476,7 +595,7 @@ function App() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="Ask anything, run code, search web, generate images..."
+              placeholder="Clone websites, build apps, run code, search web, generate images..."
               className="flex-1 px-5 py-3 bg-gray-700/50 border border-gray-600/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all"
               disabled={loading}
               data-testid="message-input"
@@ -492,7 +611,7 @@ function App() {
             </button>
           </div>
           <p className="text-xs text-gray-500 mt-3 text-center">
-            🚀 Supports code execution, web search, image generation, and document analysis
+            🚀 Clone any website • Build custom sites • Run code • Generate images • Search web
           </p>
         </div>
       </div>
