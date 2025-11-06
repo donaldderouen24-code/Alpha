@@ -534,6 +534,308 @@ async def test_api(url: str, method: str = "GET", headers: Dict = None, body: Di
             "error": str(e)
         }
 
+async def analyze_stock(symbol: str, analysis_type: str = "full") -> Dict[str, Any]:
+    """
+    Advanced stock analysis with AI-powered predictions
+    """
+    try:
+        stock = yf.Ticker(symbol)
+        
+        # Get stock info
+        info = stock.info
+        
+        # Get historical data
+        hist = stock.history(period="1y")
+        
+        if hist.empty:
+            return {"success": False, "error": f"No data found for symbol {symbol}"}
+        
+        # Calculate technical indicators
+        current_price = hist['Close'].iloc[-1]
+        price_change_1d = ((current_price - hist['Close'].iloc[-2]) / hist['Close'].iloc[-2] * 100) if len(hist) > 1 else 0
+        price_change_1w = ((current_price - hist['Close'].iloc[-5]) / hist['Close'].iloc[-5] * 100) if len(hist) > 5 else 0
+        price_change_1m = ((current_price - hist['Close'].iloc[-21]) / hist['Close'].iloc[-21] * 100) if len(hist) > 21 else 0
+        
+        # Calculate moving averages
+        ma_20 = hist['Close'].rolling(window=20).mean().iloc[-1] if len(hist) >= 20 else current_price
+        ma_50 = hist['Close'].rolling(window=50).mean().iloc[-1] if len(hist) >= 50 else current_price
+        ma_200 = hist['Close'].rolling(window=200).mean().iloc[-1] if len(hist) >= 200 else current_price
+        
+        # Calculate volatility
+        volatility = hist['Close'].pct_change().std() * (252 ** 0.5) * 100  # Annualized
+        
+        # Volume analysis
+        avg_volume = hist['Volume'].mean()
+        current_volume = hist['Volume'].iloc[-1]
+        volume_ratio = current_volume / avg_volume if avg_volume > 0 else 0
+        
+        # AI-Powered Price Prediction using Linear Regression
+        if len(hist) >= 30:
+            # Prepare data for ML model
+            hist['Days'] = range(len(hist))
+            X = hist[['Days']].values[-30:]  # Last 30 days
+            y = hist['Close'].values[-30:]
+            
+            model = LinearRegression()
+            model.fit(X, y)
+            
+            # Predict next 7 days
+            future_days = np.array([[len(hist) + i] for i in range(1, 8)])
+            predictions = model.predict(future_days)
+            
+            predicted_change = ((predictions[-1] - current_price) / current_price * 100)
+        else:
+            predictions = []
+            predicted_change = 0
+        
+        # Generate trading signal
+        signals = []
+        score = 0
+        
+        # Technical signals
+        if current_price > ma_20:
+            signals.append("✅ Price above 20-day MA (Bullish)")
+            score += 1
+        else:
+            signals.append("⚠️ Price below 20-day MA (Bearish)")
+            score -= 1
+        
+        if current_price > ma_50:
+            signals.append("✅ Price above 50-day MA (Bullish)")
+            score += 1
+        else:
+            signals.append("⚠️ Price below 50-day MA (Bearish)")
+            score -= 1
+        
+        if ma_20 > ma_50:
+            signals.append("✅ 20-MA above 50-MA (Bullish trend)")
+            score += 1
+        else:
+            signals.append("⚠️ 20-MA below 50-MA (Bearish trend)")
+            score -= 1
+        
+        if volume_ratio > 1.5:
+            signals.append("✅ High volume (Strong interest)")
+            score += 1
+        elif volume_ratio < 0.5:
+            signals.append("⚠️ Low volume (Weak interest)")
+            score -= 0.5
+        
+        if predicted_change > 5:
+            signals.append(f"✅ AI predicts {predicted_change:.1f}% gain in 7 days")
+            score += 2
+        elif predicted_change < -5:
+            signals.append(f"⚠️ AI predicts {predicted_change:.1f}% loss in 7 days")
+            score -= 2
+        
+        # Generate recommendation
+        if score >= 4:
+            recommendation = "🟢 STRONG BUY - High probability of profit"
+            action = "BUY"
+        elif score >= 2:
+            recommendation = "🟡 BUY - Moderate upside potential"
+            action = "BUY"
+        elif score >= -1:
+            recommendation = "⚪ HOLD - Wait for better signals"
+            action = "HOLD"
+        elif score >= -3:
+            recommendation = "🟠 SELL - Moderate downside risk"
+            action = "SELL"
+        else:
+            recommendation = "🔴 STRONG SELL - High probability of loss"
+            action = "SELL"
+        
+        result = {
+            "success": True,
+            "symbol": symbol,
+            "company_name": info.get('longName', symbol),
+            "current_price": float(current_price),
+            "currency": info.get('currency', 'USD'),
+            
+            # Price changes
+            "price_change_1d": float(price_change_1d),
+            "price_change_1w": float(price_change_1w),
+            "price_change_1m": float(price_change_1m),
+            
+            # Technical indicators
+            "ma_20": float(ma_20),
+            "ma_50": float(ma_50),
+            "ma_200": float(ma_200),
+            "volatility": float(volatility),
+            
+            # Volume
+            "current_volume": int(current_volume),
+            "avg_volume": int(avg_volume),
+            "volume_ratio": float(volume_ratio),
+            
+            # AI Prediction
+            "predicted_7d_change": float(predicted_change),
+            "predicted_7d_price": float(predictions[-1]) if len(predictions) > 0 else current_price,
+            
+            # Trading signals
+            "signals": signals,
+            "recommendation": recommendation,
+            "action": action,
+            "confidence_score": int((score + 5) * 10),  # 0-100 scale
+            
+            # Additional info
+            "market_cap": info.get('marketCap', 0),
+            "pe_ratio": info.get('trailingPE', 0),
+            "52w_high": info.get('fiftyTwoWeekHigh', 0),
+            "52w_low": info.get('fiftyTwoWeekLow', 0),
+        }
+        
+        return result
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+async def execute_paper_trade(action: str, symbol: str, quantity: int = 1, portfolio_id: str = "default") -> Dict[str, Any]:
+    """
+    Execute paper (simulated) trading with analysis
+    
+    ⚠️ DISCLAIMER: This is PAPER TRADING (simulation only).
+    No real money is involved. For educational purposes only.
+    """
+    try:
+        # Get current stock price
+        stock = yf.Ticker(symbol)
+        current_price = stock.history(period="1d")['Close'].iloc[-1]
+        
+        # Get portfolio from database
+        portfolio = await db.portfolios.find_one({"portfolio_id": portfolio_id})
+        
+        if not portfolio:
+            # Create new portfolio
+            portfolio = {
+                "portfolio_id": portfolio_id,
+                "cash": 100000.0,  # Start with $100k paper money
+                "positions": {},
+                "trades": [],
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.portfolios.insert_one(portfolio)
+        
+        # Execute trade
+        if action.lower() == "buy":
+            cost = current_price * quantity
+            
+            if cost > portfolio['cash']:
+                return {
+                    "success": False,
+                    "error": f"Insufficient funds. Need ${cost:.2f}, have ${portfolio['cash']:.2f}"
+                }
+            
+            # Update portfolio
+            portfolio['cash'] -= cost
+            
+            if symbol in portfolio['positions']:
+                portfolio['positions'][symbol]['quantity'] += quantity
+                portfolio['positions'][symbol]['avg_price'] = (
+                    (portfolio['positions'][symbol]['avg_price'] * portfolio['positions'][symbol]['quantity'] + 
+                     current_price * quantity) / 
+                    (portfolio['positions'][symbol]['quantity'] + quantity)
+                )
+            else:
+                portfolio['positions'][symbol] = {
+                    "quantity": quantity,
+                    "avg_price": float(current_price)
+                }
+            
+            # Record trade
+            trade = {
+                "action": "BUY",
+                "symbol": symbol,
+                "quantity": quantity,
+                "price": float(current_price),
+                "total": float(cost),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            portfolio['trades'].append(trade)
+            
+            # Update database
+            await db.portfolios.update_one(
+                {"portfolio_id": portfolio_id},
+                {"$set": portfolio}
+            )
+            
+            return {
+                "success": True,
+                "action": "BUY",
+                "symbol": symbol,
+                "quantity": quantity,
+                "price": float(current_price),
+                "total_cost": float(cost),
+                "remaining_cash": float(portfolio['cash']),
+                "message": f"✅ Bought {quantity} shares of {symbol} at ${current_price:.2f}"
+            }
+        
+        elif action.lower() == "sell":
+            if symbol not in portfolio['positions'] or portfolio['positions'][symbol]['quantity'] < quantity:
+                return {
+                    "success": False,
+                    "error": f"Insufficient shares. You have {portfolio['positions'].get(symbol, {}).get('quantity', 0)} shares"
+                }
+            
+            # Calculate profit/loss
+            avg_buy_price = portfolio['positions'][symbol]['avg_price']
+            profit_per_share = current_price - avg_buy_price
+            total_profit = profit_per_share * quantity
+            
+            # Update portfolio
+            revenue = current_price * quantity
+            portfolio['cash'] += revenue
+            portfolio['positions'][symbol]['quantity'] -= quantity
+            
+            if portfolio['positions'][symbol]['quantity'] == 0:
+                del portfolio['positions'][symbol]
+            
+            # Record trade
+            trade = {
+                "action": "SELL",
+                "symbol": symbol,
+                "quantity": quantity,
+                "price": float(current_price),
+                "total": float(revenue),
+                "profit": float(total_profit),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            portfolio['trades'].append(trade)
+            
+            # Update database
+            await db.portfolios.update_one(
+                {"portfolio_id": portfolio_id},
+                {"$set": portfolio}
+            )
+            
+            return {
+                "success": True,
+                "action": "SELL",
+                "symbol": symbol,
+                "quantity": quantity,
+                "price": float(current_price),
+                "total_revenue": float(revenue),
+                "profit": float(total_profit),
+                "profit_percent": float((profit_per_share / avg_buy_price) * 100),
+                "remaining_cash": float(portfolio['cash']),
+                "message": f"✅ Sold {quantity} shares of {symbol} at ${current_price:.2f}. Profit: ${total_profit:.2f}"
+            }
+        
+        else:
+            return {
+                "success": False,
+                "error": "Invalid action. Use 'buy' or 'sell'"
+            }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
 async def analyze_document(file_content: bytes, filename: str) -> Dict[str, Any]:
     """
     Analyze uploaded document (PDF or text)
