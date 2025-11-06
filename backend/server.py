@@ -1002,6 +1002,14 @@ I am ALPHA, an advanced artificial intelligence designed to assist with any task
     - Adapt to user needs
     - Continuous improvement
 
+11. **Stock Analysis & Trading**
+    - Real-time stock data analysis
+    - AI-powered price predictions
+    - Technical and fundamental analysis
+    - Paper trading simulation (no real money)
+    - Trading signals and recommendations
+    - Portfolio management
+
 🧠 MY INTELLIGENCE:
 - Advanced reasoning and planning
 - Multi-step problem solving
