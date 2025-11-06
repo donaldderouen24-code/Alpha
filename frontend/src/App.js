@@ -211,10 +211,10 @@ function App() {
               <Sparkles className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                AI Assistant Pro
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
+                ALPHA
               </h1>
-              <p className="text-xs text-gray-400">Ultimate Edition</p>
+              <p className="text-xs text-gray-400">Ultimate AI System</p>
             </div>
           </div>
           <button
