@@ -21,6 +21,7 @@ import io
 from bs4 import BeautifulSoup
 import re
 import yfinance as yf
+import numpy as np
 from sklearn.linear_model import LinearRegression
 from datetime import timedelta
 
