@@ -298,7 +298,7 @@ function App() {
                 <Bot className="w-5 h-5 text-blue-400" />
               </div>
               <div>
-                <h2 className="font-semibold text-lg">AI with Website Cloning & Creation</h2>
+                <h2 className="font-semibold text-lg">ALPHA - Ultimate AI System</h2>
                 <p className="text-sm text-gray-400">
                   {selectedProvider} - {selectedModel}
                 </p>
