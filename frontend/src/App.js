@@ -596,7 +596,7 @@ function App() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="Clone websites, build apps, run code, search web, generate images..."
+              placeholder="Ask ALPHA anything - I can clone sites, build apps, run code, search web, and more..."
               className="flex-1 px-5 py-3 bg-gray-700/50 border border-gray-600/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all"
               disabled={loading}
               data-testid="message-input"
