@@ -1040,6 +1040,21 @@ async def get_available_tools():
             description="Design and build complete websites from descriptions",
             enabled=True
         ),
+        ToolDefinition(
+            name="file_operations",
+            description="Create, read, edit, and search files in the system",
+            enabled=True
+        ),
+        ToolDefinition(
+            name="database_operations",
+            description="Query and manage MongoDB databases directly",
+            enabled=True
+        ),
+        ToolDefinition(
+            name="api_testing",
+            description="Test any API endpoint with custom requests",
+            enabled=True
+        ),
     ]
     return tools
 
