@@ -132,6 +132,21 @@ class StockTradeRequest(BaseModel):
     quantity: Optional[int] = None
     portfolio_id: Optional[str] = "default"
 
+class AutoTradingConfig(BaseModel):
+    enabled: bool = False
+    max_trade_amount: float = 1000.0  # Max $ per trade
+    max_daily_trades: int = 5  # Max trades per day
+    max_total_investment: float = 10000.0  # Max total invested
+    stop_loss_percent: float = 5.0  # Auto-sell if loses this %
+    take_profit_percent: float = 10.0  # Auto-sell if gains this %
+    min_confidence: int = 70  # Only trade if confidence >= this
+    allowed_symbols: Optional[List[str]] = None  # Whitelist, None = all
+    blacklist_symbols: Optional[List[str]] = []  # Blacklist
+    portfolio_id: str = "default"
+
+class AutoTradeStatusRequest(BaseModel):
+    portfolio_id: str = "default"
+
 # =============== TOOL FUNCTIONS ===============
 
 async def execute_python_code(code: str) -> Dict[str, Any]:
