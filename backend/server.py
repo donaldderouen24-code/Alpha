@@ -462,12 +462,16 @@ async def chat(request: ChatRequest):
 2. **Web Search**: You can search the internet for current information. Use this for recent events or facts.
 3. **Image Generation**: You can generate images from descriptions using DALL-E.
 4. **Document Analysis**: You can read and analyze uploaded documents.
+5. **Website Cloning**: You can analyze and clone any website by URL. Extract structure, styles, and content.
+6. **Website Creation**: You can design and build complete websites from descriptions with HTML, CSS, and JavaScript.
 
 When users ask you to:
 - Run/execute code: Write clear Python code
 - Search for information: I'll search the web for you
 - Generate/create images: Describe what you want to generate
 - Analyze documents: I'll process uploaded files
+- Clone a website: Provide the URL and I'll analyze it
+- Create a website: Describe what you want and I'll build it
 
 Be helpful, accurate, and use tools when appropriate."""
         
