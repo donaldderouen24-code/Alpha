@@ -161,16 +161,31 @@ class MarketDataService:
         """Get overall market summary"""
         try:
             global_data = self.coingecko.get_global()
+            
+            # Handle different response structures
+            if isinstance(global_data, dict) and 'data' in global_data:
+                data = global_data['data']
+            else:
+                data = global_data
+            
             return {
-                'total_market_cap_usd': global_data['data']['total_market_cap']['usd'],
-                'total_volume_24h_usd': global_data['data']['total_volume']['usd'],
-                'bitcoin_dominance': global_data['data']['market_cap_percentage']['btc'],
-                'active_cryptocurrencies': global_data['data']['active_cryptocurrencies'],
-                'markets': global_data['data']['markets'],
+                'total_market_cap_usd': data.get('total_market_cap', {}).get('usd', 0),
+                'total_volume_24h_usd': data.get('total_volume', {}).get('usd', 0),
+                'bitcoin_dominance': data.get('market_cap_percentage', {}).get('btc', 0),
+                'active_cryptocurrencies': data.get('active_cryptocurrencies', 0),
+                'markets': data.get('markets', 0),
                 'timestamp': datetime.utcnow().isoformat()
             }
         except Exception as e:
             logger.error(f"Error getting market summary: {e}")
-            return {}
+            # Return empty but valid structure
+            return {
+                'total_market_cap_usd': 0,
+                'total_volume_24h_usd': 0,
+                'bitcoin_dominance': 0,
+                'active_cryptocurrencies': 0,
+                'markets': 0,
+                'timestamp': datetime.utcnow().isoformat()
+            }
 
 market_data_service = MarketDataService()
