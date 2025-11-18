@@ -18,11 +18,26 @@ export default function TradingPlatform() {
   const [orderPrice, setOrderPrice] = useState('');
   const [tradeHistory, setTradeHistory] = useState([]);
   const [autoProfitEnabled, setAutoProfitEnabled] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    loadPortfolio();
-    loadMarketData();
-    loadTradeHistory();
+    console.log('TradingPlatform mounted, loading data...');
+    console.log('Backend URL:', BACKEND_URL);
+    console.log('API endpoint:', API);
+    
+    const loadData = async () => {
+      try {
+        await loadPortfolio();
+        await loadMarketData();
+        await loadTradeHistory();
+        console.log('All data loaded successfully');
+      } catch (err) {
+        console.error('Error loading initial data:', err);
+        setError(err.message);
+      }
+    };
+    
+    loadData();
   }, []);
 
   const loadPortfolio = async () => {
