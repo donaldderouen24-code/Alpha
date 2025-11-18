@@ -313,6 +313,14 @@ function App() {
 
         <div className="p-4 border-t border-gray-700/50">
           <button
+            onClick={() => setCurrentView('trading')}
+            className="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 rounded-lg transition-all flex items-center justify-center gap-2 mb-3 shadow-lg"
+          >
+            <TrendingUp className="w-4 h-4" />
+            Trading Platform
+          </button>
+          
+          <button
             onClick={() => setShowSettings(!showSettings)}
             className="w-full px-4 py-2 bg-gray-700/50 hover:bg-gray-700 rounded-lg transition-all flex items-center justify-center gap-2 mb-3"
             data-testid="settings-btn"
