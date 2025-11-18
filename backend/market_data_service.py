@@ -124,10 +124,18 @@ class MarketDataService:
         results = []
         
         if asset_type == 'crypto':
-            # Try CoinGecko
+            # Try CoinGecko first
             cg_data = await self.get_crypto_price_coingecko(symbol)
             if cg_data:
                 results.append(cg_data)
+            
+            # Always try Yahoo Finance as backup for crypto too
+            crypto_symbol = f"{symbol}-USD"
+            yf_data = await self.get_stock_price_yahoo(crypto_symbol)
+            if yf_data:
+                yf_data['symbol'] = symbol  # Fix symbol name
+                yf_data['source'] = 'Yahoo Finance (Crypto)'
+                results.append(yf_data)
         
         elif asset_type == 'stock':
             # Try Alpha Vantage
@@ -142,9 +150,10 @@ class MarketDataService:
         
         if not results:
             return {
-                'error': f'No data available for {symbol}',
+                'error': f'No data available for {symbol} (CoinGecko rate limited, Yahoo Finance unavailable)',
                 'symbol': symbol,
-                'sources_tried': ['CoinGecko', 'Alpha Vantage', 'Yahoo Finance']
+                'sources_tried': ['CoinGecko', 'Alpha Vantage', 'Yahoo Finance'],
+                'note': 'CoinGecko free tier has rate limits. Wait a minute and try again, or configure exchange API keys for live trading.'
             }
         
         # Return all sources with delay indicators
