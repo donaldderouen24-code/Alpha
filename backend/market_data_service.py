@@ -1,11 +1,11 @@
 """Market Data Aggregation Service - CoinGecko, Alpha Vantage, Yahoo Finance"""
 import yfinance as yf
-from pycoingecko import CoinGeckoAPI
 from alpha_vantage.timeseries import TimeSeries
 from trading_config import trading_config
 import logging
 from typing import Dict, List, Optional
 from datetime import datetime
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ class MarketDataService:
     """Aggregates market data from multiple free sources"""
     
     def __init__(self):
-        self.coingecko = CoinGeckoAPI()
+        self.coingecko_api_url = "https://api.coingecko.com/api/v3"
         self.alpha_vantage = None
         if trading_config.ALPHA_VANTAGE_KEY:
             self.alpha_vantage = TimeSeries(key=trading_config.ALPHA_VANTAGE_KEY, output_format='json')
