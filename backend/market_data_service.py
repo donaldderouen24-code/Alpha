@@ -150,7 +150,12 @@ class MarketDataService:
     async def get_trending_cryptos(self) -> List[Dict]:
         """Get trending cryptocurrencies from CoinGecko"""
         try:
-            trending = self.coingecko.get_search_trending()
+            import asyncio
+            loop = asyncio.get_event_loop()
+            trending = await loop.run_in_executor(
+                None,
+                lambda: self.coingecko.get_search_trending()
+            )
             return [
                 {
                     'name': coin['item']['name'],
