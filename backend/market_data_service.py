@@ -173,18 +173,13 @@ class MarketDataService:
     async def get_market_summary(self) -> Dict:
         """Get overall market summary"""
         try:
-            import asyncio
-            loop = asyncio.get_event_loop()
-            global_data = await loop.run_in_executor(
-                None,
-                lambda: self.coingecko.get_global()
-            )
+            url = f"{self.coingecko_api_url}/global"
+            response = requests.get(url, timeout=5)
+            response.raise_for_status()
+            result = response.json()
             
-            # Handle different response structures
-            if isinstance(global_data, dict) and 'data' in global_data:
-                data = global_data['data']
-            else:
-                data = global_data
+            # Handle response structure
+            data = result.get('data', result)
             
             return {
                 'total_market_cap_usd': data.get('total_market_cap', {}).get('usd', 0),
