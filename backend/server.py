@@ -1825,6 +1825,199 @@ async def get_available_tools():
     ]
     return tools
 
+# =============== TRADING PLATFORM ROUTES ===============
+
+from market_data_service import market_data_service
+from coinbase_service import coinbase_service
+from binance_service import binance_service
+from portfolio_service import portfolio_service
+
+# Market Data Endpoints
+@api_router.get("/trading/market-data/{symbol}")
+async def get_market_data(symbol: str, asset_type: str = "crypto"):
+    """Get aggregated market data from multiple sources"""
+    data = await market_data_service.get_aggregated_price(symbol, asset_type)
+    return data
+
+@api_router.get("/trading/market-summary")
+async def get_market_summary():
+    """Get overall market summary"""
+    summary = await market_data_service.get_market_summary()
+    return summary
+
+@api_router.get("/trading/trending")
+async def get_trending_cryptos():
+    """Get trending cryptocurrencies"""
+    trending = await market_data_service.get_trending_cryptos()
+    return {"trending": trending}
+
+# Portfolio Endpoints
+@api_router.get("/trading/portfolio")
+async def get_portfolio():
+    """Get comprehensive portfolio summary"""
+    portfolio = await portfolio_service.get_portfolio_summary()
+    return portfolio
+
+@api_router.get("/trading/balances")
+async def get_all_balances():
+    """Get balances from all exchanges"""
+    balances = await portfolio_service.get_all_balances()
+    return balances
+
+@api_router.get("/trading/history")
+async def get_trade_history(limit: int = 50):
+    """Get trade history"""
+    history = await portfolio_service.get_trade_history(limit)
+    return {"trades": history}
+
+# Coinbase Trading Endpoints
+@api_router.get("/trading/coinbase/accounts")
+async def get_coinbase_accounts():
+    """Get Coinbase account balances"""
+    if not coinbase_service.enabled:
+        raise HTTPException(status_code=400, detail="Coinbase not configured")
+    accounts = await coinbase_service.get_accounts()
+    return {"accounts": accounts}
+
+@api_router.post("/trading/coinbase/order/market")
+async def place_coinbase_market_order(
+    product_id: str,
+    side: str,
+    size: Optional[float] = None,
+    funds: Optional[float] = None
+):
+    """Place market order on Coinbase"""
+    if not coinbase_service.enabled:
+        raise HTTPException(status_code=400, detail="Coinbase not configured")
+    
+    result = await coinbase_service.place_market_order(product_id, side, size, funds)
+    
+    if result.get('success'):
+        # Save to trade history
+        await portfolio_service.save_trade_to_history({
+            'symbol': product_id,
+            'side': side,
+            'type': 'MARKET',
+            'size': size,
+            'funds': funds,
+            'exchange': 'Coinbase Pro',
+            'order_id': result.get('order_id')
+        })
+    
+    return result
+
+@api_router.post("/trading/coinbase/order/limit")
+async def place_coinbase_limit_order(
+    product_id: str,
+    side: str,
+    size: float,
+    price: float
+):
+    """Place limit order on Coinbase"""
+    if not coinbase_service.enabled:
+        raise HTTPException(status_code=400, detail="Coinbase not configured")
+    
+    result = await coinbase_service.place_limit_order(product_id, side, size, price)
+    
+    if result.get('success'):
+        await portfolio_service.save_trade_to_history({
+            'symbol': product_id,
+            'side': side,
+            'type': 'LIMIT',
+            'size': size,
+            'price': price,
+            'exchange': 'Coinbase Pro',
+            'order_id': result.get('order_id')
+        })
+    
+    return result
+
+# Binance Trading Endpoints
+@api_router.get("/trading/binance/account")
+async def get_binance_account():
+    """Get Binance account information"""
+    if not binance_service.enabled:
+        raise HTTPException(status_code=400, detail="Binance not configured")
+    account = await binance_service.get_account_info()
+    return account
+
+@api_router.post("/trading/binance/order/market")
+async def place_binance_market_order(
+    symbol: str,
+    side: str,
+    quantity: Optional[float] = None,
+    quote_order_qty: Optional[float] = None
+):
+    """Place market order on Binance"""
+    if not binance_service.enabled:
+        raise HTTPException(status_code=400, detail="Binance not configured")
+    
+    result = await binance_service.place_market_order(symbol, side, quantity, quote_order_qty)
+    
+    if result.get('success'):
+        await portfolio_service.save_trade_to_history({
+            'symbol': symbol,
+            'side': side,
+            'type': 'MARKET',
+            'quantity': quantity,
+            'quote_order_qty': quote_order_qty,
+            'exchange': 'Binance',
+            'order_id': result.get('order_id')
+        })
+    
+    return result
+
+@api_router.post("/trading/binance/order/limit")
+async def place_binance_limit_order(
+    symbol: str,
+    side: str,
+    quantity: float,
+    price: float
+):
+    """Place limit order on Binance"""
+    if not binance_service.enabled:
+        raise HTTPException(status_code=400, detail="Binance not configured")
+    
+    result = await binance_service.place_limit_order(symbol, side, quantity, price)
+    
+    if result.get('success'):
+        await portfolio_service.save_trade_to_history({
+            'symbol': symbol,
+            'side': side,
+            'type': 'LIMIT',
+            'quantity': quantity,
+            'price': price,
+            'exchange': 'Binance',
+            'order_id': result.get('order_id')
+        })
+    
+    return result
+
+# Automated Profit Taking Endpoints
+@api_router.post("/trading/auto-profit/enable")
+async def enable_auto_profit(positions: List[Dict]):
+    """Enable automatic profit taking for specified positions"""
+    await portfolio_service.enable_auto_profit_taking(positions)
+    return {"success": True, "message": "Auto profit-taking enabled"}
+
+@api_router.post("/trading/auto-profit/disable")
+async def disable_auto_profit():
+    """Disable automatic profit taking"""
+    await portfolio_service.disable_auto_profit_taking()
+    return {"success": True, "message": "Auto profit-taking disabled"}
+
+@api_router.post("/trading/position/check-profit")
+async def check_position_profit(symbol: str, exchange: str, entry_price: float, quantity: float):
+    """Check profit for a specific position"""
+    position = {
+        'symbol': symbol,
+        'exchange': exchange,
+        'entry_price': entry_price,
+        'quantity': quantity
+    }
+    result = await portfolio_service.monitor_and_take_profit(position)
+    return result
+
 # Include the router in the main app
 app.include_router(api_router)
 
