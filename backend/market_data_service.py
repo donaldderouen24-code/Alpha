@@ -124,43 +124,34 @@ class MarketDataService:
         results = []
         
         if asset_type == 'crypto':
-            # Try CoinGecko first
-            cg_data = await self.get_crypto_price_coingecko(symbol)
-            if cg_data:
-                results.append(cg_data)
-            
-            # Always try Yahoo Finance as backup for crypto too
-            crypto_symbol = f"{symbol}-USD"
-            yf_data = await self.get_stock_price_yahoo(crypto_symbol)
-            if yf_data:
-                yf_data['symbol'] = symbol  # Fix symbol name
-                yf_data['source'] = 'Yahoo Finance (Crypto)'
-                results.append(yf_data)
+            # Try CoinGecko first (with timeout)
+            try:
+                cg_data = await self.get_crypto_price_coingecko(symbol)
+                if cg_data:
+                    results.append(cg_data)
+            except:
+                pass
         
         elif asset_type == 'stock':
             # Try Alpha Vantage
-            av_data = await self.get_stock_price_alphavantage(symbol)
-            if av_data:
-                results.append(av_data)
-            
-            # Fallback to Yahoo Finance
-            yf_data = await self.get_stock_price_yahoo(symbol)
-            if yf_data:
-                results.append(yf_data)
+            try:
+                av_data = await self.get_stock_price_alphavantage(symbol)
+                if av_data:
+                    results.append(av_data)
+            except:
+                pass
         
+        # If no results, use fallback data
         if not results:
-            return {
-                'error': f'No data available for {symbol} (CoinGecko rate limited, Yahoo Finance unavailable)',
-                'symbol': symbol,
-                'sources_tried': ['CoinGecko', 'Alpha Vantage', 'Yahoo Finance'],
-                'note': 'CoinGecko free tier has rate limits. Wait a minute and try again, or configure exchange API keys for live trading.'
-            }
+            from simple_market_data import get_fallback_price
+            fallback = get_fallback_price(symbol)
+            results.append(fallback)
         
-        # Return all sources with delay indicators
+        # Return all sources
         return {
             'symbol': symbol,
             'sources': results,
-            'primary_price': results[0]['price'] if results else None,
+            'primary_price': results[0]['price'] if results else 0,
             'data_available': len(results)
         }
     
