@@ -1994,10 +1994,13 @@ async def place_binance_limit_order(
     return result
 
 # Automated Profit Taking Endpoints
+class AutoProfitRequest(BaseModel):
+    positions: List[Dict] = []
+
 @api_router.post("/trading/auto-profit/enable")
-async def enable_auto_profit(positions: List[Dict]):
+async def enable_auto_profit(request: AutoProfitRequest):
     """Enable automatic profit taking for specified positions"""
-    await portfolio_service.enable_auto_profit_taking(positions)
+    await portfolio_service.enable_auto_profit_taking(request.positions)
     return {"success": True, "message": "Auto profit-taking enabled"}
 
 @api_router.post("/trading/auto-profit/disable")
