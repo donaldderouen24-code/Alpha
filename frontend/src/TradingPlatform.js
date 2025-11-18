@@ -521,6 +521,20 @@ export default function TradingPlatform() {
 
   return (
     <div className="flex-1 flex flex-col h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-900/50 border border-red-500 text-white p-4 m-4 rounded-lg">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5" />
+            <div>
+              <p className="font-semibold">Error Loading Trading Platform</p>
+              <p className="text-sm text-red-200">{error}</p>
+              <p className="text-xs text-red-300 mt-2">Check browser console (F12) for details</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="p-6 border-b border-gray-700/50 bg-gray-800/30 backdrop-blur-lg">
         <div className="flex items-center justify-between">
@@ -532,6 +546,7 @@ export default function TradingPlatform() {
           </div>
           <button
             onClick={() => {
+              setError(null);
               loadPortfolio();
               loadMarketData();
               loadTradeHistory();
