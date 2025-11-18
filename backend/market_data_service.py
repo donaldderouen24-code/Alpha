@@ -35,12 +35,19 @@ class MarketDataService:
             }
             
             coin_id = symbol_map.get(symbol.upper(), symbol.lower())
-            data = self.coingecko.get_price(
-                ids=coin_id,
-                vs_currencies='usd',
-                include_market_cap=True,
-                include_24hr_vol=True,
-                include_24hr_change=True
+            
+            # Run blocking CoinGecko call in thread pool
+            import asyncio
+            loop = asyncio.get_event_loop()
+            data = await loop.run_in_executor(
+                None,
+                lambda: self.coingecko.get_price(
+                    ids=coin_id,
+                    vs_currencies='usd',
+                    include_market_cap=True,
+                    include_24hr_vol=True,
+                    include_24hr_change=True
+                )
             )
             
             if coin_id in data:
