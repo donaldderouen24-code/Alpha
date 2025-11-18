@@ -47,6 +47,12 @@ class MarketDataService:
             }
             
             response = requests.get(url, params=params, timeout=5)
+            
+            # Check for rate limit
+            if response.status_code == 429:
+                logger.warning(f"CoinGecko rate limited - using Yahoo Finance fallback")
+                return None
+                
             response.raise_for_status()
             data = response.json()
             
@@ -61,9 +67,9 @@ class MarketDataService:
                     'timestamp': datetime.utcnow().isoformat()
                 }
         except requests.Timeout:
-            logger.error(f"CoinGecko timeout for {symbol}")
+            logger.warning(f"CoinGecko timeout for {symbol} - trying fallback")
         except Exception as e:
-            logger.error(f"CoinGecko error for {symbol}: {e}")
+            logger.warning(f"CoinGecko error for {symbol}: {e} - trying fallback")
         return None
     
     async def get_stock_price_alphavantage(self, symbol: str) -> Optional[Dict]:
