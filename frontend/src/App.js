@@ -23,49 +23,6 @@ function App() {
   const [previewHtml, setPreviewHtml] = useState(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
-  
-  // Show trading platform if user selects it
-  if (currentView === 'trading') {
-    return (
-      <div className="flex h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
-        {/* Sidebar for navigation */}
-        <div className="w-80 bg-gray-800/50 backdrop-blur-lg border-r border-gray-700/50 flex flex-col">
-          <div className="p-6 border-b border-gray-700/50">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
-                <Sparkles className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
-                  ALPHA
-                </h1>
-                <p className="text-xs text-gray-400">Ultimate AI System</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex-1 p-4 space-y-2">
-            <button
-              onClick={() => setCurrentView('chat')}
-              className="w-full px-4 py-3 bg-gray-700/30 hover:bg-gray-700/50 rounded-lg flex items-center gap-2 transition-all"
-            >
-              <MessageSquare className="w-4 h-4" />
-              AI Assistant
-            </button>
-            <button
-              onClick={() => setCurrentView('trading')}
-              className="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-blue-600 rounded-lg flex items-center gap-2 transition-all"
-            >
-              <TrendingUp className="w-4 h-4" />
-              Trading Platform
-            </button>
-          </div>
-        </div>
-        
-        <TradingPlatform />
-      </div>
-    );
-  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
