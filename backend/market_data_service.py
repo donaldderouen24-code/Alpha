@@ -19,7 +19,7 @@ class MarketDataService:
             self.alpha_vantage = TimeSeries(key=trading_config.ALPHA_VANTAGE_KEY, output_format='json')
     
     async def get_crypto_price_coingecko(self, symbol: str) -> Optional[Dict]:
-        """Get crypto price from CoinGecko (Free tier)"""
+        """Get crypto price from CoinGecko (Free tier) - Direct API"""
         try:
             # Map common symbols to CoinGecko IDs
             symbol_map = {
@@ -36,19 +36,19 @@ class MarketDataService:
             
             coin_id = symbol_map.get(symbol.upper(), symbol.lower())
             
-            # Run blocking CoinGecko call in thread pool
-            import asyncio
-            loop = asyncio.get_event_loop()
-            data = await loop.run_in_executor(
-                None,
-                lambda: self.coingecko.get_price(
-                    ids=coin_id,
-                    vs_currencies='usd',
-                    include_market_cap=True,
-                    include_24hr_vol=True,
-                    include_24hr_change=True
-                )
-            )
+            # Direct API call
+            url = f"{self.coingecko_api_url}/simple/price"
+            params = {
+                'ids': coin_id,
+                'vs_currencies': 'usd',
+                'include_market_cap': 'true',
+                'include_24hr_vol': 'true',
+                'include_24hr_change': 'true'
+            }
+            
+            response = requests.get(url, params=params, timeout=5)
+            response.raise_for_status()
+            data = response.json()
             
             if coin_id in data:
                 return {
@@ -60,6 +60,8 @@ class MarketDataService:
                     'source': 'CoinGecko',
                     'timestamp': datetime.utcnow().isoformat()
                 }
+        except requests.Timeout:
+            logger.error(f"CoinGecko timeout for {symbol}")
         except Exception as e:
             logger.error(f"CoinGecko error for {symbol}: {e}")
         return None
