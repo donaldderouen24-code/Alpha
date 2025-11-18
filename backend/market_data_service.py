@@ -152,20 +152,19 @@ class MarketDataService:
     async def get_trending_cryptos(self) -> List[Dict]:
         """Get trending cryptocurrencies from CoinGecko"""
         try:
-            import asyncio
-            loop = asyncio.get_event_loop()
-            trending = await loop.run_in_executor(
-                None,
-                lambda: self.coingecko.get_search_trending()
-            )
+            url = f"{self.coingecko_api_url}/search/trending"
+            response = requests.get(url, timeout=5)
+            response.raise_for_status()
+            trending = response.json()
+            
             return [
                 {
                     'name': coin['item']['name'],
                     'symbol': coin['item']['symbol'],
-                    'market_cap_rank': coin['item']['market_cap_rank'],
-                    'price_btc': coin['item']['price_btc']
+                    'market_cap_rank': coin['item'].get('market_cap_rank', 0),
+                    'price_btc': coin['item'].get('price_btc', 0)
                 }
-                for coin in trending['coins'][:10]
+                for coin in trending.get('coins', [])[:10]
             ]
         except Exception as e:
             logger.error(f"Error getting trending cryptos: {e}")
