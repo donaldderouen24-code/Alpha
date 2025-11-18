@@ -123,19 +123,20 @@ export default function TradingPlatform() {
 
   const toggleAutoProfitTaking = async () => {
     try {
-      const endpoint = autoProfitEnabled
-        ? `${API}/trading/auto-profit/disable`
-        : `${API}/trading/auto-profit/enable`;
-      
-      // For enabling, send empty positions array (user would configure positions later)
-      const payload = autoProfitEnabled ? {} : { positions: [] };
-      
-      await axios.post(endpoint, payload);
+      if (autoProfitEnabled) {
+        // Disable
+        await axios.post(`${API}/trading/auto-profit/disable`);
+      } else {
+        // Enable - send empty positions array
+        await axios.post(`${API}/trading/auto-profit/enable`, {
+          positions: []
+        });
+      }
       setAutoProfitEnabled(!autoProfitEnabled);
       alert(`Auto profit-taking ${!autoProfitEnabled ? 'enabled' : 'disabled'}`);
     } catch (error) {
       console.error('Error toggling auto profit:', error);
-      alert('Failed to toggle auto profit-taking');
+      alert(`Failed to toggle auto profit-taking: ${error.response?.data?.detail || error.message}`);
     }
   };
 
